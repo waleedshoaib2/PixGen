@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import {ExtractJwt, Strategy} from 'passport-jwt';
 import {ConfigService} from '@nestjs/config';
-//allows decorator to be registered in DI, accessible from anywhere
+//allows decorator to be registered in DI, really important
 @Injectable()
 
 export class JwtStrategy extends PassportStrategy(Strategy){
