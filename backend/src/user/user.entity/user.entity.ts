@@ -1,4 +1,5 @@
-import { PrimaryGeneratedColumn, Column, BaseEntity, Entity } from 'typeorm';
+import { PrimaryGeneratedColumn, Column, BaseEntity, Entity, BeforeInsert } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 
 @Entity()
 //Using TypeORM to map class properties to db column // marking class as the table
@@ -18,4 +19,9 @@ export class User extends BaseEntity {
 
     @Column({default:true})
     isActive:boolean;
+
+    @BeforeInsert()
+    async hashPassword(){
+        this.password = await bcrypt.hash(this.password,10);
+    }
 }

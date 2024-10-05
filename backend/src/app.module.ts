@@ -4,6 +4,11 @@ import { AppService } from './app.service';
 import {TypeOrmModule} from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
+import { AuthModule } from './auth/auth.module';
+import { MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { JwtMiddleware } from './auth/jwt.middleware';
+import { PromptModule } from './prompt/prompt.module';
+import path from 'path';
 
 @Module({
   imports: [
@@ -15,9 +20,15 @@ import { UserModule } from './user/user.module';
       logging:true,
       synchronize:true
     }),
-    UserModule
+    UserModule,
+    AuthModule,
+    PromptModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure (consumer: MiddlewareConsumer){
+    consumer.apply(JwtMiddleware).forRoutes({path: 'user', method: RequestMethod.ALL})
+  }
+}
