@@ -5,5 +5,6 @@ import { PromptController } from './prompt.controller';
 @Module({
   providers: [PromptService],
   controllers: [PromptController],
+  exports: [PromptService], 
 })
 export class PromptModule {}

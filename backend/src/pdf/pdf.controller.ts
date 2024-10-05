@@ -1,10 +1,10 @@
 import { Controller, Post, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { PromptService } from './prompt.service';
+import { PromptService } from '../prompt/prompt.service';
 import { Express } from 'express';
 
-@Controller('prompt')
-export class PromptController {
+@Controller('pdf')
+export class PdfController {
   constructor(private readonly promptService: PromptService) {}
 
   @Post('upload')
@@ -22,7 +22,10 @@ export class PromptController {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Use the PromptService to process the uploaded PDF and get detailed analysis
+    // Process the uploaded PDF with the Gemini API
     return await this.promptService.processPdfWithGemini(file.buffer);
   }
 }
+
+
+

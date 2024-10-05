@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { JwtMiddleware } from './auth/jwt.middleware';
 import { PromptModule } from './prompt/prompt.module';
+import { PdfModule } from './pdf/pdf.module';
 import path from 'path';
 
 @Module({
@@ -22,7 +23,8 @@ import path from 'path';
     }),
     UserModule,
     AuthModule,
-    PromptModule
+    PromptModule,
+    PdfModule
   ],
   controllers: [AppController],
   providers: [AppService],

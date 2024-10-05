@@ -1,87 +1,123 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleAIFileManager } from '@google/generative-ai/server';
+import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PromptService {
   private geminiClient;
+  private fileManager;
 
-  constructor() {
-    this.geminiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY); // Set API Key as an environment variable
+  constructor(private configService: ConfigService) {
+    this.geminiClient = new GoogleGenerativeAI(this.configService.get<string>('GOOGLE_API_KEY'));
+    this.fileManager = new GoogleAIFileManager(this.configService.get<string>('GOOGLE_API_KEY'));
   }
 
-  async enhancePrompt(userPrompt: string, userStyle: string): Promise<any> {
+  async processPdfWithGemini(fileBuffer: Buffer): Promise<any> {
     try {
+      // Create a unique filename for the temporary file
+      const tempFileName = `temp-${uuidv4()}.pdf`;
+      const tempFilePath = path.join(__dirname, '../../temp', tempFileName);
+
+      // Ensure the temp directory exists
+      fs.mkdirSync(path.dirname(tempFilePath), { recursive: true });
+
+      // Write the buffer to a temporary file
+      fs.writeFileSync(tempFilePath, fileBuffer);
+
+      // Upload the file to the Gemini API using the File API
+      const uploadResponse = await this.fileManager.uploadFile(tempFilePath, {
+        mimeType: 'application/pdf',
+        displayName: 'Uploaded Research Paper',
+      });
+
+      // View the upload response
+      console.log(`Uploaded file ${uploadResponse.file.displayName} as: ${uploadResponse.file.uri}`);
+
+      // Extract sections from the document and analyze them individually
       const model = this.geminiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-      const prompt = `
-        You are an expert prompt engineer specializing in enhancing prompts for image generation using AI, particularly for creative tasks involving visual art. Your task is to enhance and refine the following user-provided prompt to make it as specific, vivid, and visually detailed as possible. Use best practices in prompt engineering to maximize clarity, specificity, and creativity. Additionally, incorporate the visual style specified by the user to guide the overall artistic direction of the prompt.
+      // Assume we have a way to split the document into different sections (using a placeholder here)
+      const sections = ["Introduction", "Methods", "Results", "Conclusion"]; // Placeholder for actual section names/content
+      const finalAnalysis = {};
 
-        Here are the instructions to follow:
+      for (const section of sections) {
+        const prompt = `
+          You are an expert research paper analyst. Analyze the following section of a research paper and provide a detailed explanation, including:
+          
+          1. **Detailed Explanation**: Explain the core idea, objective, and findings of the section in depth. Cover all key concepts and describe their significance.
+          
+          2. **Key Insights**: Extract the most important insights from this section and explain why they are crucial to the research.
 
-        1. **Maintain Original Intent**: Preserve the core idea of the user-provided prompt while enhancing the level of detail, specificity, and visual clarity.
+          3. **Detailed Explanations for Complex Terms**: Identify and explain any technical terms, methodologies, or advanced concepts that a non-expert might not understand.
 
-        2. **Add Context and Specific Elements**: Expand on the main subject by adding relevant context:
-          - If the prompt describes a scene, include specific **visual elements** such as colors, textures, lighting conditions, and background features.
-          - Consider **emotional tone** and **atmosphere** that the user might want, e.g., "mysterious", "serene", or "futuristic".
+          4. **Suggestions for Improvement**: Provide suggestions for improving the research, including alternative methods or additional experiments that could add value.
 
-        3. **Incorporate User-Provided Visual Style**: Enhance the prompt based on the style chosen by the user. The styles may include:
-          - **Cinematographic**: Add dramatic lighting and visual cues that evoke a film-like quality.
-          - **Anime**: Use vibrant colors, exaggerated features, and fantastical details.
-          - **Cyberpunk**: Integrate neon colors, futuristic cityscapes, and dystopian elements.
-          - **HD/Realistic**: Make the scene highly detailed with realistic lighting, textures, and shadows.
-          - **Watercolor/Impressionist**: Describe soft, flowing colors and abstract but emotive details.
-          - If no specific style is mentioned, enhance the prompt to be visually rich without relying on a particular artistic genre.
+          5. **Tone and Contextual Analysis**: Describe the tone of the section and how it impacts the reader's understanding of the research.
 
-        4. **Focus on Clarity**: Ensure that the enhanced prompt is clear, specific, and unambiguous.
-          - Avoid abstract terms unless followed by specific examples (e.g., instead of "beautiful landscape," use "a vibrant green meadow with wildflowers under a clear blue sky").
+          **Section Name**: ${section}
+          **Content**: Provide a detailed breakdown of this section.
 
-        5. **Include Unique Details**: Add unique elements that could make the generated image stand out:
-          - For characters: Describe their appearance, clothing, expression, and actions.
-          - For settings: Describe the time of day, weather, and any noteworthy background elements (e.g., "an old cobblestone street in Paris at sunset").
+          Please return the response in the following JSON format:
 
-        6. **Use Sensory Descriptions**: Where appropriate, include descriptions that appeal to the senses:
-          - **Visual**: Colors, shapes, and lighting.
-          - **Auditory**: Sounds that might be heard in the scene (e.g., "the hum of electric drones").
-          - **Tactile**: Textures and feelings (e.g., "the cold, smooth stone surface of the castle walls").
-
-        **User-Provided Prompt**: "${userPrompt}"
-
-        **User-Selected Style**: "${userStyle}"
-
-        **Instructions for the Response Format**:
-        Please respond with the following format:
-
-        {
-          "enhancedPrompt": "A detailed version of the prompt, enhanced with specific visual elements, styles, and atmosphere. Ensure this is a vivid and specific enhancement of the original user-provided prompt.",
-          "details": {
-            "styleIncorporated": "${userStyle}",
-            "addedElements": [
-              "Key context added (e.g., environment details such as lush green hills, sunset lighting)",
-              "Specific visual elements added (e.g., neon lights, futuristic structures, character descriptions)",
-              "Atmospheric and sensory descriptions (e.g., mood, weather, time of day)"
-            ]
+          {
+            "detailedExplanation": "Provide a comprehensive explanation of the section here.",
+            "keyInsights": [
+              "Insight 1: Description and significance.",
+              "Insight 2: Description and significance."
+            ],
+            "complexExplanations": {
+              "Technical Term 1": "Explanation of technical term and its relevance.",
+              "Methodology 1": "Explanation of methodology and its purpose."
+            },
+            "suggestions": [
+              "Suggestion 1: Possible improvement with reasoning.",
+              "Suggestion 2: Additional experiments that could enhance the findings."
+            ],
+            "toneAnalysis": "Description of the tone and its effect."
           }
+        `;
+
+        try {
+          const result = await model.generateContent([
+            {
+              fileData: {
+                mimeType: uploadResponse.file.mimeType,
+                fileUri: uploadResponse.file.uri,
+              },
+            },
+            { text: prompt },
+          ]);
+
+          // Parse and add the response to the final analysis
+          let responseText = result.response.candidates[0].content.parts[0].text;
+
+          // Clean the response by removing unnecessary backticks and formatting markers
+          responseText = responseText.replace(/```json|```/g, '').trim();
+
+          try {
+            finalAnalysis[section] = JSON.parse(responseText);
+          } catch (parseError) {
+            throw new BadRequestException(`Invalid JSON response for section ${section}: ${responseText}. Error: ${parseError.message}`);
+          }
+
+        } catch (error) {
+          finalAnalysis[section] = {
+            error: `Error processing section ${section}: ${error.message}`,
+          };
         }
-      `;
-
-      const result = await model.generateContent(prompt);
-      console.log("the result is", result);
-
-      // Extract the text from the response
-      let responseText = result.response.candidates[0].content.parts[0].text;
-
-      // Remove triple backticks and 'json' marker
-      responseText = responseText.replace(/```json|```/g, '').trim();
-
-      try {
-        // Parse the cleaned response as JSON
-        return JSON.parse(responseText);
-      } catch (parseError) {
-        throw new BadRequestException(`Invalid JSON response: ${responseText}. Error: ${parseError.message}`);
       }
-      
+
+      // Delete the temporary file after processing
+      fs.unlinkSync(tempFilePath);
+
+      // Return the final accumulated analysis
+      return finalAnalysis;
     } catch (error) {
-      throw new BadRequestException('Error generating enhanced prompt from Google Gemini AI');
+      throw new BadRequestException('Error processing PDF with Google Gemini AI: ' + error.message);
     }
   }
 }
