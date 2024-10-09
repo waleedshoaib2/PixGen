@@ -9,11 +9,7 @@ export class PdfService {
     try {
       const pdfData = await pdfParse(file.buffer);
       const text = pdfData.text;
-
-      // Clean the extracted text
       const cleanedText = this.cleanExtractedText(text);
-
-      // Segment the cleaned text into sections
       const sections = this.splitIntoSections(cleanedText);
 
       return sections;
@@ -23,11 +19,10 @@ export class PdfService {
   }
 
   private cleanExtractedText(text: string): string {
-    // Remove unnecessary characters, page numbers, and references
     return text
-      .replace(/\s*\d+\s*$/gm, '') // Removes page numbers at the end of lines
-      .replace(/\[.*?\]/g, '') // Removes in-line references like [1], [2], etc.
-      .replace(/\s+/g, ' ') // Normalizes excessive spaces
+      .replace(/\s*\d+\s*$/gm, '') 
+      .replace(/\[.*?\]/g, '') 
+      .replace(/\s+/g, ' ') 
       .trim();
   }
 
@@ -41,7 +36,6 @@ export class PdfService {
     let currentSection = 'unclassified';
     sections[currentSection] = '';
 
-    // Tokenize text into sentences
     const tokenizer = new natural.SentenceTokenizer();
     const sentences = tokenizer.tokenize(text);
 
@@ -50,17 +44,16 @@ export class PdfService {
       const matchedHeader = trimmedSentence.match(sectionRegex);
 
       if (matchedHeader) {
-        // If a section header is found, set it as the current section
         currentSection = matchedHeader[0].toLowerCase();
         if (!sections[currentSection]) {
-          sections[currentSection] = ''; // Initialize an empty string for the section content if not exist
+          sections[currentSection] = '';
         }
       }
-      // Append sentence to the current section
+      
       sections[currentSection] += trimmedSentence + ' ';
     });
 
-    // Trim extra spaces from the section content
+
     for (const section in sections) {
       sections[section] = sections[section].trim();
     }
