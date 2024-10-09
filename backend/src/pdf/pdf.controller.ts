@@ -9,7 +9,7 @@ export class PdfController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 5 * 1024 * 1024 }, // Set a limit of 5MB for the file size
+    limits: { fileSize: 5 * 1024 * 1024 }, 
     fileFilter: (req, file, callback) => {
       if (file.mimetype !== 'application/pdf') {
         return callback(new BadRequestException('Only PDF files are allowed'), false);
@@ -21,8 +21,6 @@ export class PdfController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-
-    // Process the uploaded PDF with the Gemini API
     return await this.promptService.processPdfWithGemini(file.buffer);
   }
 }
