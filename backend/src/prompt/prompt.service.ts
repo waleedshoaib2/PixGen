@@ -18,30 +18,21 @@ export class PromptService {
 
   async processPdfWithGemini(fileBuffer: Buffer): Promise<any> {
     try {
-      // Create a unique filename for the temporary file
-      const tempFileName = `temp-${uuidv4()}.pdf`;
+     const tempFileName = `temp-${uuidv4()}.pdf`;
       const tempFilePath = path.join(__dirname, '../../temp', tempFileName);
 
-      // Ensure the temp directory exists
       fs.mkdirSync(path.dirname(tempFilePath), { recursive: true });
-
-      // Write the buffer to a temporary file
       fs.writeFileSync(tempFilePath, fileBuffer);
-
-      // Upload the file to the Gemini API using the File API
-      const uploadResponse = await this.fileManager.uploadFile(tempFilePath, {
+     const uploadResponse = await this.fileManager.uploadFile(tempFilePath, {
         mimeType: 'application/pdf',
         displayName: 'Uploaded Research Paper',
       });
 
-      // View the upload response
+      
       console.log(`Uploaded file ${uploadResponse.file.displayName} as: ${uploadResponse.file.uri}`);
 
-      // Extract sections from the document and analyze them individually
       const model = this.geminiClient.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-      // Assume we have a way to split the document into different sections (using a placeholder here)
-      const sections = ["Introduction", "Methods", "Results", "Conclusion"]; // Placeholder for actual section names/content
+      const sections = ["Introduction", "Methods", "Results", "Conclusion"]; 
       const finalAnalysis = {};
 
       for (const section of sections) {
@@ -91,11 +82,7 @@ export class PromptService {
             },
             { text: prompt },
           ]);
-
-          // Parse and add the response to the final analysis
           let responseText = result.response.candidates[0].content.parts[0].text;
-
-          // Clean the response by removing unnecessary backticks and formatting markers
           responseText = responseText.replace(/```json|```/g, '').trim();
 
           try {
@@ -110,11 +97,7 @@ export class PromptService {
           };
         }
       }
-
-      // Delete the temporary file after processing
       fs.unlinkSync(tempFilePath);
-
-      // Return the final accumulated analysis
       return finalAnalysis;
     } catch (error) {
       throw new BadRequestException('Error processing PDF with Google Gemini AI: ' + error.message);
