@@ -9,7 +9,7 @@ export class PromptController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 5 * 1024 * 1024 }, // Set a limit of 5MB for the file size
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, callback) => {
       if (file.mimetype !== 'application/pdf') {
         return callback(new BadRequestException('Only PDF files are allowed'), false);
@@ -22,7 +22,6 @@ export class PromptController {
       throw new BadRequestException('No file uploaded');
     }
 
-    // Use the PromptService to process the uploaded PDF and get detailed analysis
     return await this.promptService.processPdfWithGemini(file.buffer);
   }
 }
